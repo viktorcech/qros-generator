@@ -10,7 +10,7 @@ One file, two front ends: run it with no arguments for the GUI, or pass a filena
 
 ## What it does
 
-- **CAS and WAV.** The CAS output is bit-for-bit identical to v0.4, checked against a reference `Decathlon.cas`.
+- **CAS and WAV.** The CAS output matches the byte layout of real QROS tapes, verified against reference recordings.
 - **Manchester (biphase-L) WAV encoder** with a phase accumulator, so a non-integer samples-per-bit ratio (96000/6595 = 14.5565) never drifts across a whole tape. 44.1 / 48 / 96 / 192 kHz, adjustable amplitude, optional inverted polarity for recorders that flip the signal.
 - **Bootable tapes** (`--boot`). The compiled QROS loader is written ahead of the data as standard cassette boot records, with the tape's baud divisor and total block count patched into it — so the tape shows a progress percentage and starts on its own (START on power-up).
 - **Verifies its own output.** Every CAS is decoded back to a payload and compared against the source; `--verify-wav` re-decodes the audio too.
