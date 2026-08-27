@@ -1,0 +1,17 @@
+# loader blob for --boot (build it from the qros-loader repo)
+qrosload.bin
+
+# generated tapes
+*.cas
+*.wav
+
+# python
+__pycache__/
+*.pyc
+
+# scratch
+*.bak
+/_zal/
+
+# editor / agent
+.claude/
