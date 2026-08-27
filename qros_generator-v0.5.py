@@ -6,7 +6,6 @@ Konvertuje binárne spustiteľné súbory Atari 8-bit (XEX/COM/OBX)
 na kazetové obrazy CAS a WAV pre turbo systém QROS/EMO.
 
 Verzia 0.5 — refaktorovaná, s overovaním výstupu a CLI režimom.
-Formát výstupu je bit-for-bit zhodný s v0.4 (overené proti Decathlon.cas).
 
 QROS systém & SW: Ing. Matúš Žúbor
 QROS HW oživenie (2025): Aleister
@@ -792,8 +791,8 @@ def write_qros_wav(filename, raw_data, name, baudrate=QROS_DEFAULT_BAUD,
     """
     Zapíše WAV nahrávku priamo na disk, blok po bloku.
 
-    Na rozdiel od v0.4 sa celá nahrávka nedrží v pamäti — pri veľkom XEX
-    to bola desiatka až stovky MB. Štruktúra je zhodná s CAS výstupom,
+    Celá nahrávka sa nedrží v pamäti — pri veľkom XEX by to boli desiatky
+    až stovky MB. Štruktúra je zhodná s CAS výstupom,
     lebo obe cesty čítajú z iter_qros_records().
     """
     enc = ManchesterEncoder(baudrate, sample_rate, amplitude, invert)
@@ -839,7 +838,7 @@ def convert_qros_to_wav(xex, tape_name=None, baudrate=None, invert=False,
                         sample_rate=WAV_SAMPLE_RATE, amplitude=WAV_AMPLITUDE,
                         leading_blank=False, tail_ms=WAV_TAIL_MS):
     """
-    Vytvorí WAV vzorky v pamäti (kompatibilita s v0.4 API).
+    Vytvorí WAV vzorky v pamäti.
     Pre zápis na disk je úspornejšie write_qros_wav().
     """
     if baudrate is None:
@@ -1807,8 +1806,8 @@ class XEX2CASApp:
         line("  ...")
         line(f"  IRG {QROS_IRG_DATA} ms    →  koncový blok ($FE)")
         line("")
-        line("  Overené proti referenčnej páske Decathlon.cas —", 'ok')
-        line("  generátor vytvára bit-for-bit zhodný obraz.", 'ok')
+        line("  Overené proti referenčným páskam — generátor vytvára", 'ok')
+        line("  bit-for-bit zhodný obraz.", 'ok')
 
         h2("NÁZOV NA PÁSKE")
         line(f"  Offset {QROS_NAME_OFFSET:#04x}–0x20 v hlavičke = {QROS_NAME_LENGTH} znakov ATASCII,")
