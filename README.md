@@ -12,8 +12,9 @@ One file, two front ends: run it with no arguments for the GUI, or pass a filena
 
 - **CAS and WAV.** The CAS output matches the byte layout of real QROS tapes, verified against reference recordings.
 - **Manchester (biphase-L) WAV encoder** with a phase accumulator, so a non-integer samples-per-bit ratio (96000/6595 = 14.5565) never drifts across a whole tape. 44.1 / 48 / 96 / 192 kHz, adjustable amplitude, optional inverted polarity for recorders that flip the signal.
-- **Bootable tapes** (`--boot`). The compiled QROS loader is written ahead of the data as standard cassette boot records, with the tape's baud divisor and total block count patched into it — so the tape shows a progress percentage and starts on its own (START on power-up).
+- **Bootable tapes** (`--boot`). The compiled **[QROS Loader V2](https://github.com/viktorcech/qros-loader)** is written ahead of the data as standard cassette boot records (37 of them), with the tape's baud divisor and total block count patched into it — so the tape shows a progress percentage and starts on its own (START on power-up). The V2 loader runs under the OS ROM, so the program may use all of `$0000-$BFFF`.
 - **Verifies its own output.** Every CAS is decoded back to a payload and compared against the source; `--verify-wav` re-decodes the audio too.
+- **Checks foreign tapes.** "Skontrolovať CAS..." (check CAS) takes any QROS CAS — structure, block indexes, types, checksums. Inter-record gaps are reported, not enforced: other generators use other gaps (156 / 78 ms, say) and the loader reads them all; only a gap under 6 ms or over 5 s is an error.
 - **Batch conversion** of many files at once, and `--rename` to change the on-tape name inside a finished CAS without regenerating it.
 - **Streamed WAV writing** — the recording is not held in memory, so a large XEX doesn't blow up RAM.
 
@@ -29,7 +30,7 @@ A QROS record is 132 bytes: a 2-byte block index, a type byte, 128 data bytes an
 | `$FE` | end of file |
 | `$FF` | blank setup block (optional, `--blank`) |
 
-Inter-record gaps: 1258 ms before the first record, 39 ms everywhere else. Speeds on offer:
+Inter-record gaps written: 1258 ms before the first record, 39 ms everywhere else. Speeds on offer:
 
 | Baud | |
 |------|---|
@@ -43,13 +44,13 @@ POKEY derives its rate as `baud = clock / (2 × (divisor + 7))`.
 ## Usage
 
 ```
-python qros_generator-v0.5.py                          # GUI
-python qros_generator-v0.5.py game.xex                 # -> game.cas
-python qros_generator-v0.5.py game.xex --wav -b 9600   # CAS + WAV at 9600
-python qros_generator-v0.5.py game.xex --boot -n "MY GAME"
-python qros_generator-v0.5.py *.xex                    # batch
-python qros_generator-v0.5.py game.cas --rename "NEW NAME"
-python qros_generator-v0.5.py game.xex --info          # just analyse, don't convert
+python qros_generator-v0.6.py                          # GUI
+python qros_generator-v0.6.py game.xex                 # -> game.cas
+python qros_generator-v0.6.py game.xex --wav -b 9600   # CAS + WAV at 9600
+python qros_generator-v0.6.py game.xex --boot -n "MY GAME"
+python qros_generator-v0.6.py *.xex                    # batch
+python qros_generator-v0.6.py game.cas --rename "NEW NAME"
+python qros_generator-v0.6.py game.xex --info          # just analyse, don't convert
 ```
 
 Useful flags: `-o` output file, `-n` tape name (max 25 ATASCII characters), `-b` baud, `--wav` / `--wav-only`, `--rate` and `--volume` for the audio, `--invert`, `--blank`, `--boot`, `--no-verify`, `--verify-wav`.
@@ -58,7 +59,7 @@ Useful flags: `-o` output file, `-n` tape name (max 25 ATASCII characters), `-b`
 
 **Python 3** and nothing else — `tkinter` is only needed for the GUI, and the command line still works without it.
 
-For `--boot` you also need `qrosload.bin`, the assembled QROS loader, sitting next to the script. Build it from **[viktorcech/qros-loader](https://github.com/viktorcech/qros-loader)**.
+For `--boot` you also need `qrosload.bin`, the assembled QROS loader, sitting next to the script. Build it from **[viktorcech/qros-loader](https://github.com/viktorcech/qros-loader)** (`mads qrosload.asm -d:BOOT=1 -d:LOADADR=$0700 -d:DIVISOR=127 -o:qrosload.bin`).
 
 ## Credits
 

@@ -5,7 +5,7 @@ QROS Generator - Generátor kazetových obrazov pre QROS/EMO
 Konvertuje binárne spustiteľné súbory Atari 8-bit (XEX/COM/OBX)
 na kazetové obrazy CAS a WAV pre turbo systém QROS/EMO.
 
-Verzia 0.5 — refaktorovaná, s overovaním výstupu a CLI režimom.
+Verzia 0.6 — kontrola CAS prijíma aj pásky z iných generátorov.
 
 QROS systém & SW: Ing. Matúš Žúbor
 QROS HW oživenie (2025): Aleister
@@ -13,8 +13,8 @@ QROS Generator: W1K
 Referenčný kód: Turgen System (baktra)
 
 Použitie:
-    python qros_generator-v0.5.py                 → grafické rozhranie
-    python qros_generator-v0.5.py hra.xex --wav   → príkazový riadok
+    python qros_generator-v0.6.py                 → grafické rozhranie
+    python qros_generator-v0.6.py hra.xex --wav   → príkazový riadok
 """
 
 import os
@@ -34,7 +34,7 @@ except ImportError:                     # headless systém — funguje aspoň CL
     HAVE_TK = False
 
 APP_NAME = "QROS Generator"
-APP_VERSION = "0.5"
+APP_VERSION = "0.6"
 
 
 # =============================================================================
@@ -103,6 +103,8 @@ QROS_BLOCK_NAMES = {
 QROS_IRG_HEADER = 1258          # pred prvým záznamom na páske
 QROS_IRG_HEADER_REPEAT = 39     # pred opakovaním hlavičky
 QROS_IRG_DATA = 39              # pred dátovými blokmi
+QROS_IRG_MIN = 6                # kontrola cudzích pások: loader rozozná ticho
+QROS_IRG_MAX = 5000             # od 5,1 ms a na blok čaká najviac 5,8 s
 
 # Index hlavičkového bloku (v šablóne pevne 0x0001), dáta začínajú od 2
 QROS_HEADER_INDEX = 1
@@ -397,7 +399,8 @@ def load_boot_loader(path=None):
                             BOOT_LOADER_FILE)
     if not os.path.isfile(path):
         raise FileNotFoundError(
-            f"Chýba {os.path.basename(path)} — najprv spustite: python build_loader.py")
+            f"Chýba {os.path.basename(path)} — preložte loader (qros-loader): "
+            f"mads qrosload.asm -d:BOOT=1 -d:LOADADR=$0700 -d:DIVISOR=127 -o:{BOOT_LOADER_FILE}")
     with open(path, 'rb') as f:
         blob = bytearray(f.read())
     if len(blob) < 8 or blob[0] != 0x00:
@@ -991,14 +994,21 @@ def verify_cas(cas_bytes, expected_raw=None, expected_baud=None):
                     f"Blok #{i} má index {index}, očakávaný {expected_index}")
             expected_index = index + 1
 
-    # IRG medzery
-    if data_chunks[0][1] != QROS_IRG_HEADER:
-        problems.append(
-            f"Prvý IRG je {data_chunks[0][1]} ms namiesto {QROS_IRG_HEADER} ms")
-    for i, c in enumerate(data_chunks[1:], start=1):
-        if c[1] != QROS_IRG_DATA:
+    # IRG medzery: pásky z iných generátorov majú iné medzery (napr. 156/78 ms)
+    # a loader ich číta rovnako. Chybou je len medzera, ktorú loader nezvládne:
+    # dlhšia než jeho čakanie na blok, alebo kratšia než rozpoznateľné ticho
+    # (po chybnom bloku sa na nej znova zarovnáva).
+    irgs = [c[1] for c in data_chunks[1:]]
+    if irgs:
+        notes.append(f"IRG: pred páskou {data_chunks[0][1]} ms, medzi blokmi "
+                     f"{min(irgs)}..{max(irgs)} ms")
+    for i, c in enumerate(data_chunks):
+        if c[1] > QROS_IRG_MAX:
             problems.append(
-                f"IRG bloku #{i} je {c[1]} ms namiesto {QROS_IRG_DATA} ms")
+                f"IRG bloku #{i} je {c[1]} ms, loader čaká na blok najviac {QROS_IRG_MAX} ms")
+        elif i and c[1] < QROS_IRG_MIN:
+            problems.append(
+                f"IRG bloku #{i} je {c[1]} ms, loader rozozná medzeru od {QROS_IRG_MIN} ms")
 
     payload, errors = blocks_to_payload(blocks)
     problems.extend(errors)
@@ -1856,11 +1866,10 @@ class XEX2CASApp:
         line("  baud  - prenosová rýchlosť (aux = baudrate)")
         line("  data  - dátový záznam (aux = IRG v ms)")
         line("")
-        line("  Pozor: štandardné CAS 'data' chunky bežné emulátory (Altirra)", 'dim')
-        line("  prehrávajú ako FSK modulovaný SIO záznam, nie ako Manchester.", 'dim')
-        line("  CAS je preto určený pre QROS-aware prehrávač (SIO2SD, AVR emulátor),", 'dim')
-        line("  ktorý si signál vyrobí sám. Pre priame prehratie do reálneho", 'dim')
-        line("  QROS hardvéru z linkového výstupu použite WAV.", 'dim')
+        line("  Emulátor (v turbo režime kazety) aj prehrávač (SIO2SD, AVR) hrajú", 'dim')
+        line("  'data' chunky ako SIO rámce rýchlosťou z baud chunku - tak ich číta", 'dim')
+        line("  aj loader. Pre priame prehratie do reálneho QROS hardvéru", 'dim')
+        line("  z linkového výstupu použite WAV.", 'dim')
 
         h2("CAS vs WAV")
         line("  Obe cesty čítajú z tej istej sekvencie blokov, takže sa")
@@ -1896,6 +1905,13 @@ class XEX2CASApp:
                 txt.insert(tk.END, text + "\n")
 
         h1(f"{APP_NAME} - Changelog")
+
+        h2("v0.6 — 2026-10-12")
+        line("  - \"Skontrolovať CAS...\" už neodmieta pásky z iných generátorov")
+        line("    pre iné medzery (IRG) — loader ich číta. Chybou je len medzera")
+        line(f"    pod {QROS_IRG_MIN} ms alebo nad {QROS_IRG_MAX} ms; medzery sa vypíšu.")
+        line("  - Bootovacia páska (--boot) používa QROS Loader V2 (qrosload.bin,")
+        line("    37 záznamov): loader beží pod OS ROM, program má až $0000-$BFFF.")
 
         h2("v0.5 — 2026-08-27")
         line("  Formát výstupu je nezmenený — overené bit-for-bit proti", 'dim')
@@ -2291,7 +2307,7 @@ def main():
         return code
     if not HAVE_TK:
         cli_log("tkinter nie je dostupné — použite príkazový riadok "
-                "(qros_generator-v0.5.py --help)", 'err')
+                "(qros_generator-v0.6.py --help)", 'err')
         return 2
     XEX2CASApp().run()
     return 0
