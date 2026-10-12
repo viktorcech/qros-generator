@@ -12,7 +12,7 @@ One file, two front ends: run it with no arguments for the GUI, or pass a filena
 
 - **CAS and WAV.** The CAS output matches the byte layout of real QROS tapes, verified against reference recordings.
 - **Manchester (biphase-L) WAV encoder** with a phase accumulator, so a non-integer samples-per-bit ratio (96000/6595 = 14.5565) never drifts across a whole tape. 44.1 / 48 / 96 / 192 kHz, adjustable amplitude, optional inverted polarity for recorders that flip the signal.
-- **Bootable tapes** (`--boot`). The compiled **[QROS Loader V2](https://github.com/viktorcech/qros-loader)** is written ahead of the data as standard cassette boot records (37 of them), with the tape's baud divisor and total block count patched into it — so the tape shows a progress percentage and starts on its own (START on power-up). The V2 loader runs under the OS ROM, so the program may use all of `$0000-$BFFF`.
+- **Bootable tapes** (`--boot`). The compiled QROS loader is written ahead of the data as standard cassette boot records, with the tape's baud divisor and total block count patched into it — so the tape shows a progress percentage and starts on its own (START on power-up).
 - **Verifies its own output.** Every CAS is decoded back to a payload and compared against the source; `--verify-wav` re-decodes the audio too.
 - **Checks foreign tapes.** "Skontrolovať CAS..." (check CAS) takes any QROS CAS — structure, block indexes, types, checksums. Inter-record gaps are reported, not enforced: other generators use other gaps (156 / 78 ms, say) and the loader reads them all; only a gap under 6 ms or over 5 s is an error.
 - **Batch conversion** of many files at once, and `--rename` to change the on-tape name inside a finished CAS without regenerating it.

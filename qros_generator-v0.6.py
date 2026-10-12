@@ -1917,8 +1917,6 @@ class XEX2CASApp:
         line("  - \"Skontrolovať CAS...\" už neodmieta pásky z iných generátorov")
         line("    pre iné medzery (IRG) — loader ich číta. Chybou je len medzera")
         line(f"    pod {QROS_IRG_MIN} ms alebo nad {QROS_IRG_MAX} ms; medzery sa vypíšu.")
-        line("  - Bootovacia páska (--boot) používa QROS Loader V2 (qrosload.bin,")
-        line("    37 záznamov): loader beží pod OS ROM, program má až $0000-$BFFF.")
         line("  - Okno sa otvorí také veľké, aké si obsah pýta - pri DPI škálovaní")
         line("    Windows bol panel LOG odrezaný a výsledky sa nezobrazili.")
         line("  - Tlačidlo \"Analyzovať XEX\" zrušené: analýza beží sama po výbere")
