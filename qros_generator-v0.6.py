@@ -392,11 +392,15 @@ def pokey_divisor(baudrate, clock=POKEY_CLOCK_PAL):
 def load_boot_loader(path=None):
     """
     Načíta preložený loader (qrosload.bin) spolu s jeho boot hlavičkou.
-    Hľadá ho vedľa skriptu, ak nie je zadaná cesta.
+    Hľadá ho vedľa skriptu, potom o adresár vyššie (koreň projektu
+    qros-loader, kde ho vytvára build.py), ak nie je zadaná cesta.
     """
     if path is None:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            BOOT_LOADER_FILE)
+        here = os.path.dirname(os.path.abspath(__file__))
+        for d in (here, os.path.dirname(here)):
+            path = os.path.join(d, BOOT_LOADER_FILE)
+            if os.path.isfile(path):
+                break
     if not os.path.isfile(path):
         raise FileNotFoundError(
             f"Chýba {os.path.basename(path)} — preložte loader (qros-loader): "
@@ -1444,7 +1448,6 @@ class XEX2CASApp:
         self.root.title(f"{APP_NAME} v{APP_VERSION}")
         self.root.configure(bg=COLORS['bg'])
         self.root.resizable(True, True)
-        self.root.minsize(760, 640)
 
         self.xex = None
         self.busy = False
@@ -1453,9 +1456,15 @@ class XEX2CASApp:
         self._update_estimate()
 
     def _center_window(self, w, h):
-        """Vycentruje okno na obrazovke."""
+        """Vycentruje okno na obrazovke. Okno je aspoň také veľké, aké si
+        obsah pýta (väčšie písmo pri DPI škálovaní Windows) — inak by pack
+        odrezal naposledy pridaný panel, a to je LOG."""
+        self.root.update_idletasks()
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
+        w = min(max(w, self.root.winfo_reqwidth()), sw - 40)
+        h = min(max(h, self.root.winfo_reqheight()), sh - 80)
+        self.root.minsize(min(w, 760), min(h, 640))
         self.root.geometry(f"{w}x{h}+{max(0, (sw - w) // 2)}+{max(0, (sh - h) // 2)}")
 
     # ---- Vlastné štýlované widgety ----
