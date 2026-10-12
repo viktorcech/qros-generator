@@ -1562,6 +1562,7 @@ class XEX2CASApp:
         row = tk.Frame(frm, bg=COLORS['bg2'])
         row.pack(fill=tk.X, padx=8, pady=(0, 8))
         self.var_input = tk.StringVar()
+        self.var_input.trace_add('write', self._input_changed)   # analýza sama
         self._make_entry(row, self.var_input, 50).pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
         self._make_button(row, "Vybrať...", self._browse_input).pack(
@@ -1674,9 +1675,6 @@ class XEX2CASApp:
         self.btn_convert = self._make_button(
             frm_btn, "  ⚡ KONVERTOVAŤ  ", self._do_convert, accent=True)
         self.btn_convert.pack(side=tk.LEFT, padx=(0, 8))
-        self.btn_analyze = self._make_button(
-            frm_btn, "  Analyzovať XEX  ", self._do_analyze)
-        self.btn_analyze.pack(side=tk.LEFT, padx=(0, 8))
         self.btn_batch = self._make_button(
             frm_btn, "  Dávka...  ", self._do_batch)
         self.btn_batch.pack(side=tk.LEFT, padx=(0, 8))
@@ -1921,6 +1919,10 @@ class XEX2CASApp:
         line(f"    pod {QROS_IRG_MIN} ms alebo nad {QROS_IRG_MAX} ms; medzery sa vypíšu.")
         line("  - Bootovacia páska (--boot) používa QROS Loader V2 (qrosload.bin,")
         line("    37 záznamov): loader beží pod OS ROM, program má až $0000-$BFFF.")
+        line("  - Okno sa otvorí také veľké, aké si obsah pýta - pri DPI škálovaní")
+        line("    Windows bol panel LOG odrezaný a výsledky sa nezobrazili.")
+        line("  - Tlačidlo \"Analyzovať XEX\" zrušené: analýza beží sama po výbere")
+        line("    alebo vpísaní vstupného súboru.")
 
         h2("v0.5 — 2026-08-27")
         line("  Formát výstupu je nezmenený — overené bit-for-bit proti", 'dim')
@@ -2063,11 +2065,10 @@ class XEX2CASApp:
                 ("Všetky súbory", "*.*"),
             ])
         if path:
-            self.var_input.set(path)
+            self.var_input.set(path)            # analýzu spustí _input_changed
             self.var_output.set(os.path.splitext(path)[0] + ".cas")
             fname = os.path.splitext(os.path.basename(path))[0]
             self.var_name.set(fname[:QROS_NAME_LENGTH])
-            self._do_analyze()
 
     def _browse_output(self):
         """Dialóg na uloženie výstupného CAS súboru."""
@@ -2078,6 +2079,13 @@ class XEX2CASApp:
             self.var_output.set(path)
 
     # ---- Analýza XEX súboru ----
+
+    def _input_changed(self, *_args):
+        """Vstupná cesta sa zmenila (výber, vpísanie, vloženie): existujúci
+        súbor sa hneď analyzuje. Rozpísaná cesta nič nehlási."""
+        path = self.var_input.get().strip()
+        if os.path.isfile(path) and (self.xex is None or self.xex.filename != path):
+            self._do_analyze()
 
     def _do_analyze(self):
         """Analyzuje vstupný XEX súbor a zobrazí informácie v logu."""
@@ -2164,8 +2172,7 @@ class XEX2CASApp:
         """Zamkne / odomkne GUI počas práce."""
         self.busy = busy
         state = tk.DISABLED if busy else tk.NORMAL
-        for btn in (self.btn_convert, self.btn_analyze,
-                    self.btn_batch, self.btn_check):
+        for btn in (self.btn_convert, self.btn_batch, self.btn_check):
             btn.config(state=state)
         if busy:
             self.progress['value'] = 0
